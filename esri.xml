@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<customMapSource>
+  <name>ESRI World Imagery</name>
+  <tileType>png</tileType>
+  <tileSize>256</tileSize>
+  <minZoom>0</minZoom>
+  <maxZoom>19</maxZoom>
+  <url>https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}</url>
+</customMapSource>
+  <attribution>© Esri, DeLorme, NAVTEQ</attribution>
+  <description>World Imagery from Esri provides high-resolution satellite and aerial imagery.</description>
+  <tags>
+    <tag>satellite</tag>
+    <tag>aerial</tag>
+    <tag>imagery</tag>
+    <tag>Esri</tag>
+  </tags> 

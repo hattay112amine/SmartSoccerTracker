@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>📡 Smart Soccer Tracker - GPS Dashboard</title>
+    <style>
+        :root {
+            --bg-overlay: rgba(0, 0, 0, 0.6);
+            --card-bg: rgba(24, 23, 23, 0.384);
+            --text: #fff;
+            --accent: #040705;
+            --highlight: #ffcc00;
+            --danger: #ff4444;
+            --good: #32d74b;
+            --warn: #f9b239;
+        }
+
+
+        /* Fond terrain de football */
+        body {
+            margin: 0;
+            padding: 2rem;
+            background-image: url('./images/stade.jpg');
+            background-repeat: no-repeat;
+            background-position: center;
+            background-size: cover;
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Titre style panneau de score */
+        h1 {
+            background: rgba(206, 200, 200, 0.7);
+            padding: 1rem 2rem;
+            border-radius: 10px;
+            color: var(--accent);
+            font-weight: 900;
+            text-shadow: 0 0 10px #00ff6a, 0 0 20px #00ff6a;
+            margin-bottom: 1.5rem;
+        }
+
+        /* Container global */
+        .container {
+            max-width: 960px;
+            width: 100%;
+        }
+
+        /* Grille des données secondaires */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Cartes avec effet verre dépoli */
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            /* flou de 12 pixels */
+            border-radius: 12px;
+            padding: 1rem;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: transform 0.2s ease, background 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+
+        .label {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--highlight);
+            margin-bottom: 0.2rem;
+            text-shadow: 0 0 4px #000;
+        }
+
+        .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        /* Zone principale style panneau lumineux */
+        .main-stats {
+            width: 93%;
+            display: flex;
+            height: 50%;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            border-radius: 16px;
+            padding: 2rem;
+            background-color: rgba(218, 225, 218, 0.74);
+            /* blanc transparent à 30% */
+            backdrop-filter: blur(12px);
+            /* flou de 12 pixels */
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0 40px rgba(0, 255, 106, 0.5);
+            color: #fff;
+        }
+
+        /* Popup GPS faible façon panneau d'arbitre */
+        #gpsPopup div {
+            background: linear-gradient(135deg, #ff0000, #cc0000);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 12px;
+            font-size: 1.4rem;
+            box-shadow: 0 0 20px rgba(255, 0, 0, 0.8);
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .main-stat {
+            flex: 1;
+            text-align: center;
+            margin: 0 1rem;
+        }
+
+        .main-stat .label {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #0c0c0c;
+            margin-bottom: 0.3rem;
+            text-shadow: 0 0 6px #003c33;
+        }
+
+        .main-stat .value {
+            font-size: 3.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 8px #006655;
+        }
+
+        .unit {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-left: 0.3rem;
+            color: #1613c0ba;
+            vertical-align: super;
+            user-select: none;
+        }
+
+        /* HDOP avec couleur */
+        .hdop {
+            font-weight: 700;
+            font-size: 1.3rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .hdop.good {
+            background-color: var(--good);
+            color: #004000;
+        }
+
+        .hdop.warn {
+            background-color: var(--warn);
+            color: #6e4a00;
+        }
+
+        .hdop.danger {
+            background-color: var(--danger);
+            color: #5c0000;
+        }
+
+        /* Status message */
+        #status {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            user-select: none;
+        }
+
+        #status.ok {
+            color: var(--good);
+        }
+
+        #status.warn {
+            color: var(--warn);
+        }
+
+        #status.danger {
+            color: var(--danger);
+        }
+
+        /* Responsive font size for main stats on small screens */
+        @media (max-width: 600px) {
+            .main-stat .value {
+                font-size: 2.5rem;
+            }
+
+            .main-stat .label {
+                font-size: 1.3rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📡 Smart Soccer Tracker - GPS Dashboard</h1>
+    <div class="container">
+        <div class="main-stats">
+            <div class="main-stat">
+                <div class="label">🏃‍♂️vitesse</div>
+                <div><span id="speedK" class="value">--</span><span class="unit">km/h</span></div>
+                <div><span id="speedM" class="value">--</span><span class="unit">m/s</span></div>
+            </div>
+            <div class="main-stat">
+                <div class="label">📏 Distance parcourue</div>
+                <div><span id="distance" class="value">0.00</span><span class="unit">m</span></div>
+                <button onclick="resetDistance()"
+                    style="position: relative; width: 175px; height: 49px;top: 30px; right: 20px; padding: 5px 10px; background-color: #ff4444; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                    🔄 Réinitialiser la distance à zéro
+                </button>
+            </div>
+
+
+
+        </div>
+
+        <div id="status" class="danger">🔴 En attente des données GPS...</div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="label">Latitude</div>
+                <div class="value" id="lat">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Longitude</div>
+                <div class="value" id="lon">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Altitude</div>
+                <div class="value" id="alt">-- m</div>
+            </div>
+            <div class="card">
+                <div class="label">Satellites</div>
+                <div class="value" id="sats">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Direction</div>
+                <div class="value" id="course">--°</div>
+            </div>
+            <div class="card">
+                <div class="label">HDOP</div>
+                <div class="value hdop" id="hdop">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Heure (UTC)</div>
+                <div class="value" id="time">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Date</div>
+                <div class="value" id="date">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Status element
+        const status = document.getElementById('status');
+        const hdopEl = document.getElementById('hdop');
+
+        // HDOP styling helper
+        function styleHDOP(hdop) {
+            if (hdop < 1) {
+                hdopEl.className = 'value hdop good';
+                status.className = 'ok';
+                status.textContent = '🟢 Précision excellente';
+            } else if (hdop < 2) {
+                hdopEl.className = 'value hdop warn';
+                status.className = 'warn';
+                status.textContent = '🟡 Précision acceptable';
+            } else {
+                hdopEl.className = 'value hdop danger';
+                status.className = 'danger';
+                status.textContent = '🔴 Mauvaise précision';
+            }
+        }
+
+        // WebSocket connection
+        const socket = new WebSocket('ws://192.168.4.1:81/');
+        socket.onopen = () => console.log('✅ WebSocket connecté');
+
+        let lastFix = Date.now();
+        // Référence vers la popup
+        const gpsPopup = document.getElementById('gpsPopup');
+        socket.onmessage = (event) => {
+            console.log("📡 Donnée reçue :", event.data);
+            const data = JSON.parse(event.data);
+
+            // Mise à jour des données texte
+            document.getElementById('lat').textContent = data.lat;
+            document.getElementById('lon').textContent = data.lon;
+            document.getElementById('alt').textContent = data.alt + ' m';
+            document.getElementById('sats').textContent = data.sats;
+            document.getElementById('course').textContent = data.course + '°';
+            document.getElementById('time').textContent = data.time;
+            document.getElementById('date').textContent = data.date;
+            document.getElementById('speedK').textContent = data.speedKmph;
+            document.getElementById('speedM').textContent = data.speedMps;
+
+            let hdopVal = parseFloat(data.hdop);
+            document.getElementById('hdop').textContent = hdopVal.toFixed(2);
+            let popupClosedManually = false;
+
+            if (isNaN(hdopVal) || hdopVal >= 2) {
+                if (!popupClosedManually) {
+                    gpsPopup.style.display = "flex";
+                }
+                styleHDOP(hdopVal);
+                console.warn("📡 Donnée ignorée à cause d'un HDOP élevé :", hdopVal);
+                return;
+            } else {
+                gpsPopup.style.display = "none";
+                popupClosedManually = false; // réinitialise l'état pour les prochaines fois
+            }
+            styleHDOP(hdopVal); // si bon, appliquer le style normalement
+            document.getElementById('distance').textContent = data.totalDistance.toFixed(2);
+
+            // Envoi vers le serveur Node.js pour stockage en BDD
+            /* fetch('http://localhost:3000/gps', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                 },
+                 body: JSON.stringify({
+                     latitude: lat,
+                     longitude: lon,
+                     altitude: data.alt,
+                     vitesseKmh: data.speedKmph,
+                     vitesseMps: data.speedMps,
+                     distance: totalDistance.toFixed(2),
+                     hdop: hdopVal,
+                     satellites: data.sats,
+                     direction: data.course,
+                     date: data.date,
+                     time: data.time
+                 })
+             })
+                 .catch (err => console.error("Erreur envoi BDD:", err));
+             // Mise à jour du statut
+             status.className = 'ok';
+             console.log("🛰️ Données envoyées GPS:", data.date, data.time);*/
+        };
+        socket.onerror = (error) => {
+            console.error('❌ Erreur WebSocket:', error);
+            status.className = 'danger';
+            status.textContent = '❌ Erreur de connexion WebSocket';
+        };
+
+        function resetDistance() {
+            document.getElementById("distance").textContent = "0.00";
+            console.log("Distance remise à zéro !");
+        }
+
+        function closePopup() {
+            document.getElementById('gpsPopup').style.display = 'none';
+            popupClosedManually = true;
+        }
+    </script>
+    <!-- Pop-up précision GPS -->
+    <div id="gpsPopup" style="
+    display:none;
+    position:fixed;
+    top:0;
+    left:0;
+    width:100%;
+    height:100%;
+    background:rgba(0,0,0,0.8);
+    z-index:9999;
+    color:white;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    font-size:1.5rem;
+    text-align:center;
+    padding:20px;
+">
+        <div style="
+        background:#222;
+        padding:20px 30px;
+        border-radius:12px;
+        box-shadow:0 0 20px rgba(255,0,0,0.6);
+        max-width:400px;
+        position: relative;  /* important pour bouton absolu */
+    ">
+            🚨 <b>Signal GPS faible</b> 🚨
+            <br><br>
+            Attendez quelques secondes jusqu'à ce que la précision s'améliore...
+            <br><br>
+            <small>(HDOP < 2 requis)</small>
+                    <br><br>
+                    <button onclick="closePopup()" style="
+                 position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: #ff5555;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 1rem;
+            cursor: pointer;
+        ">X</button>
+        </div>
+    </div>
+
+</body>
+
+</html>

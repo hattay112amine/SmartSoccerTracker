@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>📡 Smart Soccer Tracker - GPS Dashboard</title>
+    <style>
+        :root {
+            --bg: #0c0c0c;
+            --card-bg: #181818;
+            --text: #eee;
+            --accent: #00ffc8;
+            --highlight: #ff7f50;
+            --danger: #ff4c4c;
+            --good: #32d74b;
+            --warn: #f9b239;
+        }
+
+        body {
+            margin: 0;
+            padding: 2rem;
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            color: var(--accent);
+            margin-bottom: 1.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 10px var(--accent);
+        }
+
+        #map {
+            height: 400px;
+            width: 100%;
+            margin-top: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 0 20px #00ffc8;
+        }
+
+        /* Container global */
+        .container {
+            max-width: 960px;
+            width: 100%;
+        }
+
+        /* Grille des données secondaires */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        /* Cartes petites données */
+        .card {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 1rem;
+            box-shadow: 0 0 15px rgba(0, 255, 200, 0.1);
+            transition: transform 0.2s ease;
+            user-select: none;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+        }
+
+        .label {
+            font-weight: 600;
+            font-size: 1rem;
+            color: var(--highlight);
+            margin-bottom: 0.3rem;
+        }
+
+        .value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text);
+        }
+
+        /* Section vitesse + distance, très mise en avant */
+        .main-stats {
+            display: flex;
+            justify-content: space-around;
+            background: linear-gradient(135deg, #00ffc8, #00a087);
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 1.5rem;
+            box-shadow: 0 0 40px #00ffc8aa;
+            user-select: none;
+            color: #020202;
+        }
+
+        .main-stat {
+            flex: 1;
+            text-align: center;
+            margin: 0 1rem;
+        }
+
+        .main-stat .label {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #011f1b;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 6px #003c33;
+        }
+
+        .main-stat .value {
+            font-size: 3.5rem;
+            font-weight: 900;
+            text-shadow: 0 0 8px #006655;
+        }
+
+        .unit {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-left: 0.3rem;
+            color: #003c33;
+            vertical-align: super;
+            user-select: none;
+        }
+
+        /* HDOP avec couleur */
+        .hdop {
+            font-weight: 700;
+            font-size: 1.3rem;
+            padding: 0.2rem 0.4rem;
+            border-radius: 6px;
+            display: inline-block;
+            min-width: 60px;
+            text-align: center;
+            user-select: none;
+        }
+
+        .hdop.good {
+            background-color: var(--good);
+            color: #004000;
+        }
+
+        .hdop.warn {
+            background-color: var(--warn);
+            color: #6e4a00;
+        }
+
+        .hdop.danger {
+            background-color: var(--danger);
+            color: #5c0000;
+        }
+
+        /* Status message */
+        #status {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            user-select: none;
+        }
+
+        #status.ok {
+            color: var(--good);
+        }
+
+        #status.warn {
+            color: var(--warn);
+        }
+
+        #status.danger {
+            color: var(--danger);
+        }
+
+        /* Responsive font size for main stats on small screens */
+        @media (max-width: 600px) {
+            .main-stat .value {
+                font-size: 2.5rem;
+            }
+
+            .main-stat .label {
+                font-size: 1.3rem;
+            }
+
+            .grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+</head>
+
+<body>
+    <h1>📡 Smart Soccer Tracker - GPS Dashboard</h1>
+    <div class="container">
+        <div class="main-stats">
+            <div class="main-stat">
+                <div class="label">🚗 Vitesse</div>
+                <div><span id="speedK" class="value">--</span><span class="unit">km/h</span></div>
+                <div><span id="speedM" class="value">--</span><span class="unit">m/s</span></div>
+            </div>
+            <div class="main-stat">
+                <div class="label">📏 Distance parcourue</div>
+                <div><span id="distance" class="value">0.00</span><span class="unit">m</span></div>
+            </div>
+            <button onclick="resetDistance()"
+                style="position: absolute; top: 20px; right: 20px; padding: 10px 20px; background-color: #ff4444; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer;">
+                🔄 Reset Distance à zéro
+            </button>
+        </div>
+
+        <div id="status" class="danger">🔴 En attente des données GPS...</div>
+        <div id="map"
+            style="height: 400px; width: 100%; margin-top: 2rem; border-radius: 12px; box-shadow: 0 0 20px #00ffc8;">
+        </div>
+
+        <div class="grid">
+            <div class="card">
+                <div class="label">Latitude</div>
+                <div class="value" id="lat">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Longitude</div>
+                <div class="value" id="lon">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Altitude</div>
+                <div class="value" id="alt">-- m</div>
+            </div>
+            <div class="card">
+                <div class="label">Satellites</div>
+                <div class="value" id="sats">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Direction</div>
+                <div class="value" id="course">--°</div>
+            </div>
+            <div class="card">
+                <div class="label">HDOP</div>
+                <div class="value hdop" id="hdop">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Heure (UTC)</div>
+                <div class="value" id="time">--</div>
+            </div>
+            <div class="card">
+                <div class="label">Date</div>
+                <div class="value" id="date">--</div>
+            </div>
+        </div>
+    </div>
+
+    <script>/*
+// Setup map
+const map = L.map('map').setView([36.8, 10.18], 15); // centrée sur Tunis par défaut
+L.tileLayer('', {
+attribution: ''
+}).addTo(map);
+
+const marker = L.marker([0, 0]).addTo(map);
+let polyline = L.polyline([], { color: '#00ffc8' }).addTo(map);*/
+
+        // Variables distance
+        let lastPos = null;
+        let totalDistance = 0;
+
+        // Status element
+        const status = document.getElementById('status');
+        const hdopEl = document.getElementById('hdop');
+
+        // HDOP styling helper
+        function styleHDOP(hdop) {
+            if (hdop < 1) {
+                hdopEl.className = 'value hdop good';
+                status.className = 'ok';
+                status.textContent = '🟢 Précision excellente';
+            } else if (hdop < 2) {
+                hdopEl.className = 'value hdop warn';
+                status.className = 'warn';
+                status.textContent = '🟡 Précision acceptable';
+            } else {
+                hdopEl.className = 'value hdop danger';
+                status.className = 'danger';
+                status.textContent = '🔴 Mauvaise précision';
+            }
+        }
+
+        // WebSocket connection
+        const socket = new WebSocket('ws://192.168.4.1:81/');
+        socket.onopen = () => console.log('✅ WebSocket connecté');
+
+        let lastFix = Date.now();
+
+        socket.onmessage = (event) => {
+            console.log("📡 Donnée reçue :", event.data);
+            const data = JSON.parse(event.data);
+
+            // Mise à jour des données texte
+            document.getElementById('lat').textContent = data.lat;
+            document.getElementById('lon').textContent = data.lon;
+            document.getElementById('alt').textContent = data.alt + ' m';
+            document.getElementById('sats').textContent = data.sats;
+            document.getElementById('course').textContent = data.course + '°';
+            document.getElementById('time').textContent = data.time;
+            document.getElementById('date').textContent = data.date;
+            document.getElementById('speedK').textContent = data.speedKmph;
+            document.getElementById('speedM').textContent = data.speedMps;
+
+            let hdopVal = parseFloat(data.hdop);
+            document.getElementById('hdop').textContent = hdopVal.toFixed(1);
+
+            // ❌ Filtrage si HDOP trop élevé
+            if (isNaN(hdopVal) || hdopVal >= 2) {
+                styleHDOP(hdopVal);
+                console.warn("📡 Donnée ignorée à cause d'un HDOP élevé :", hdopVal);
+                return;
+            }
+
+            styleHDOP(hdopVal); // si bon, appliquer le style normalement
+
+
+
+            // Calcul de la distance parcourue
+            let lat = parseFloat(data.lat);
+            let lon = parseFloat(data.lon);
+
+            if (!isNaN(lat) && !isNaN(lon)) {
+                // Calcul distance
+                if (lastPos) {
+                    const R = 6371000; // rayon Terre en mètres
+                    const toRad = x => x * Math.PI / 180;
+                    const dLat = toRad(lat - lastPos.lat);
+                    const dLon = toRad(lon - lastPos.lon);
+                    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                        Math.cos(toRad(lastPos.lat)) * Math.cos(toRad(lat)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+                    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+                    const dist = R * c;
+
+                    // Ne pas accumuler si la distance est trop faible (< 1m, seuil à ajuster)
+                    if (dist > 1) {
+                        totalDistance += dist;
+                    }
+                }
+
+                lastPos = { lat, lon };
+
+                // Affichage distance (2 décimales)
+                document.getElementById('distance').textContent = totalDistance.toFixed(3);
+            }
+
+            lastFix = Date.now();
+            // Envoi vers le serveur Node.js pour stockage en BDD
+            /* fetch('http://localhost:3000/gps', {
+                 method: 'POST',
+                 headers: {
+                     'Content-Type': 'application/json',
+                 },
+                 body: JSON.stringify({
+                     latitude: lat,
+                     longitude: lon,
+                     altitude: data.alt,
+                     vitesseKmh: data.speedKmph,
+                     vitesseMps: data.speedMps,
+                     distance: totalDistance.toFixed(2),
+                     hdop: hdopVal,
+                     satellites: data.sats,
+                     direction: data.course,
+                     date: data.date,
+                     time: data.time
+                 })
+             })
+                 .catch (err => console.error("Erreur envoi BDD:", err));
+             // Mise à jour du statut
+             status.className = 'ok';
+             console.log("🛰️ Données envoyées GPS:", data.date, data.time);*/
+        };
+        socket.onerror = (error) => {
+            console.error('❌ Erreur WebSocket:', error);
+            status.className = 'danger';
+            status.textContent = '❌ Erreur de connexion WebSocket';
+        };
+
+        function resetDistance() {
+            totalDistance = 0;
+            document.getElementById("distance").textContent = "0.00";
+            console.log("Distance remise à zéro !");
+        }
+
+        // Initialisation de la carte Leaflet hors ligne
+        var southWest = L.latLng(36.6, 9.8);
+        var northEast = L.latLng(36.9, 10.2);
+        var bounds = L.latLngBounds(southWest, northEast);
+
+
+        var map = L.map('map', {
+            maxBounds: bounds,
+            maxBoundsViscosity: 1.0,  // empêche totalement de sortir des bounds
+            minZoom: 13,
+            zoomControl: false, // désactive le contrôle de zoom par défaut
+            maxZoom: 17
+        }).setView([36.7723177, 10.0339127], 13);
+
+        L.tileLayer('http://localhost:8081/grand_tunismap_png/{z}/{x}/{y}.png', {
+            minZoom: 13,
+            maxZoom: 17,
+            attribution: '© Carte hors ligne'
+        }).addTo(map);
+
+
+        // Exemple d’ajout d’un marqueur (optionnel)
+        var marker = L.marker([36.7723177, 10.0339127]).addTo(map).bindPopup('Centre de la carte').openPopup();
+
+
+    </script>
+</body>
+
+</html>
